@@ -1,0 +1,68 @@
+name: Release
+
+# Paket Composer diterbitkan lewat tag: Packagist membaca tag dari repo ini.
+#
+#   git tag v0.1.0
+#   git push --follow-tags
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      # Dibutuhkan untuk membuat GitHub Release di bawah.
+      contents: write
+    env:
+      # Konteks `secrets` tidak tersedia di `if:` sebuah step, jadi nilainya
+      # dipindahkan ke env lebih dulu.
+      PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
+      PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, json, mbstring
+          coverage: none
+
+      - run: composer validate --strict
+      - uses: ramsey/composer-install@v3
+      - run: vendor/bin/phpunit
+
+      - name: Buat GitHub Release
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      # Cadangan bila GitHub App Packagist belum dipasang di organisasi. Dengan
+      # app terpasang, langkah ini tidak diperlukan dan otomatis dilewati.
+      - name: Beri tahu Packagist
+        if: ${{ env.PACKAGIST_USERNAME != '' && env.PACKAGIST_TOKEN != '' }}
+        run: |
+          status="$(curl -sS -o /tmp/packagist.json -w '%{http_code}' \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            "https://packagist.org/api/update-package?username=${PACKAGIST_USERNAME}&apiToken=${PACKAGIST_TOKEN}" \
+            -d "{\"repository\":{\"url\":\"https://github.com/${GITHUB_REPOSITORY}\"}}")"
+          cat /tmp/packagist.json
+          echo
+          if [ "$status" != "202" ] && [ "$status" != "200" ]; then
+            echo "Packagist menolak permintaan update (HTTP $status)."
+            exit 1
+          fi
+
+      - name: Langkah terakhir
+        run: |
+          NAME="$(php -r 'echo json_decode(file_get_contents("composer.json"))->name;')"
+          {
+            echo "### $GITHUB_REF_NAME sudah dirilis"
+            echo
+            echo '```bash'
+            echo "composer require $NAME:^${GITHUB_REF_NAME#v}"
+            echo '```'
+            echo
+            echo "Halaman paketnya: https://packagist.org/packages/$NAME"
+          } >> "$GITHUB_STEP_SUMMARY"

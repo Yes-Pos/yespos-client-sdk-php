@@ -1,0 +1,50 @@
+{
+	"name": "yespos/client",
+	"description": "SDK resmi untuk YesPOS Client API: outlet, produk, metode pembayaran, dan order (QRIS, Virtual Account, EDC).",
+	"keywords": ["yespos", "ipaymu", "pos", "payment", "qris", "virtual-account", "edc"],
+	"type": "library",
+	"license": "MIT",
+	"homepage": "https://github.com/Yes-Pos/yespos-client-sdk-php",
+	"authors": [
+		{
+			"name": "iPaymu",
+			"homepage": "https://ipaymu.com"
+		}
+	],
+	"support": {
+		"issues": "https://github.com/Yes-Pos/yespos-client-sdk-php/issues",
+		"source": "https://github.com/Yes-Pos/yespos-client-sdk-php"
+	},
+	"require": {
+		"php": "^8.1",
+		"ext-curl": "*",
+		"ext-json": "*"
+	},
+	"require-dev": {
+		"nyholm/psr7": "^1.8",
+		"phpunit/phpunit": "^10.5 || ^11.0",
+		"psr/http-client": "^1.0",
+		"psr/http-factory": "^1.0"
+	},
+	"suggest": {
+		"psr/http-client": "Pakai Psr18Transport bila ingin memakai HTTP client sendiri (Guzzle, Symfony HttpClient, dll.)."
+	},
+	"autoload": {
+		"psr-4": {
+			"Yespos\\Client\\": "src/"
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"Yespos\\Client\\Tests\\": "tests/"
+		}
+	},
+	"config": {
+		"sort-packages": true
+	},
+	"scripts": {
+		"test": "phpunit"
+	},
+	"minimum-stability": "stable",
+	"prefer-stable": true
+}
