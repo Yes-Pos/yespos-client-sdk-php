@@ -35,3 +35,10 @@ jobs:
           dependency-versions: ${{ matrix.dependencies }}
 
       - run: vendor/bin/phpunit
+
+  # Packagist ikut diperbarui begitu main hijau, supaya dev-main tidak basi.
+  packagist:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/packagist.yml
+    secrets: inherit

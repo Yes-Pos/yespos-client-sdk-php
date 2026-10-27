@@ -1,0 +1,73 @@
+name: Packagist
+
+# Memberi tahu Packagist agar menarik versi terbaru dari repo ini.
+#
+# Dipanggil oleh CI (setelah test di main lulus) dan oleh Release (setelah test
+# di sebuah tag lulus), jadi Packagist hanya diperbarui oleh kode yang hijau.
+# Bisa juga dijalankan sendiri lewat tab Actions → Packagist → Run workflow,
+# misalnya untuk menyinkronkan versi lama.
+on:
+  workflow_call:
+    secrets:
+      PACKAGIST_USERNAME:
+        required: false
+      PACKAGIST_TOKEN:
+        required: false
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      # Konteks `secrets` tidak tersedia di `if:` sebuah step, jadi nilainya
+      # dipindahkan ke env lebih dulu.
+      PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
+      PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ingatkan bila secret belum dipasang
+        if: ${{ env.PACKAGIST_USERNAME == '' || env.PACKAGIST_TOKEN == '' }}
+        run: |
+          {
+            echo "### Packagist dilewati"
+            echo
+            echo "Secret \`PACKAGIST_USERNAME\` dan \`PACKAGIST_TOKEN\` belum dipasang."
+            echo "Settings → Secrets and variables → Actions → New repository secret."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Beri tahu Packagist
+        if: ${{ env.PACKAGIST_USERNAME != '' && env.PACKAGIST_TOKEN != '' }}
+        run: |
+          NAME="$(php -r 'echo json_decode(file_get_contents("composer.json"))->name;')"
+          API="https://packagist.org/api/update-package?username=${PACKAGIST_USERNAME}&apiToken=${PACKAGIST_TOKEN}"
+
+          notify() {
+            curl -sS -o /tmp/packagist.json -w '%{http_code}' \
+              -XPOST -H 'content-type:application/json' "$API" \
+              -d "{\"repository\":{\"url\":\"$1\"}}"
+          }
+
+          # Bentuk yang didokumentasikan Packagist adalah URL paketnya; URL repo
+          # juga diterima (itu yang dikirim webhook GitHub). Coba keduanya agar
+          # tidak bergantung pada satu bentuk saja.
+          status="$(notify "https://packagist.org/packages/${NAME}")"
+          if [ "$status" != "202" ] && [ "$status" != "200" ]; then
+            status="$(notify "https://github.com/${GITHUB_REPOSITORY}")"
+          fi
+
+          cat /tmp/packagist.json; echo
+          if [ "$status" = "202" ] || [ "$status" = "200" ]; then
+            {
+              echo "### Packagist diperbarui"
+              echo
+              echo "https://packagist.org/packages/${NAME}"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "Packagist menolak permintaan update (HTTP $status)."
+          if [ "$status" = "404" ]; then
+            echo "Paket '${NAME}' belum terdaftar. Daftarkan sekali di https://packagist.org/packages/submit"
+          fi
+          exit 1

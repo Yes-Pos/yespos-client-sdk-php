@@ -295,40 +295,45 @@ Workflow `release.yml` menjalankan `composer validate` + test, membuat GitHub Re
 
 ### Menyiapkan auto-update ke Packagist
 
-Sekali saja, lalu setiap tag baru terbit sendiri.
+Repo ini memperbarui Packagist lewat GitHub Actions: `packagist.yml` dipanggil
+oleh CI setelah `main` hijau, dan oleh Release setelah test di sebuah tag lulus.
+Jadi Packagist hanya pernah diperbarui oleh kode yang lolos test.
 
-**1. Daftarkan paketnya** di [packagist.org/packages/submit](https://packagist.org/packages/submit) dengan URL `https://github.com/Yes-Pos/yespos-client-sdk-php`. Packagist membaca `composer.json`, jadi nama paketnya mengikuti field `name` di situ (`yespos/client`).
+Dua langkah, sekali saja.
 
-**2. Pilih salah satu cara auto-update:**
+**1. Daftarkan paketnya.** Buka [packagist.org/packages/submit](https://packagist.org/packages/submit),
+isi `https://github.com/Yes-Pos/yespos-client-sdk-php`. Packagist membaca
+`composer.json`, jadi nama paketnya mengikuti field `name` di situ: `yespos/client`.
 
-**Cara A — GitHub App (disarankan).** Tidak ada token yang disimpan di repo.
+**2. Pasang dua secret.** Ambil tokennya di packagist.org → **Profile → Show API Token**,
+lalu di GitHub repo → **Settings → Secrets and variables → Actions → New repository secret**:
 
-1. Buka [github.com/apps/packagist](https://github.com/apps/packagist) → **Install**.
-2. Pilih organisasi `Yes-Pos`, lalu beri akses ke repo ini (atau semua repo).
-3. Di packagist.org → halaman paket, tanda **Auto-updated** akan muncul.
+| Nama | Isi |
+|---|---|
+| `PACKAGIST_USERNAME` | username packagist.org |
+| `PACKAGIST_TOKEN` | API token dari langkah di atas |
 
-Setiap `git push` dan setiap tag langsung memperbarui Packagist.
+Atau lewat [GitHub CLI](https://cli.github.com):
 
-**Cara B — webhook manual.** Bila app tidak bisa dipasang di organisasi.
+```bash
+gh secret set PACKAGIST_USERNAME --repo Yes-Pos/yespos-client-sdk-php
+gh secret set PACKAGIST_TOKEN    --repo Yes-Pos/yespos-client-sdk-php
+```
 
-1. packagist.org → **Profile → Show API Token**, salin tokennya.
-2. GitHub repo → **Settings → Webhooks → Add webhook**:
-   - Payload URL: `https://packagist.org/api/update-package?username=<USERNAME>&apiToken=<TOKEN>`
-   - Content type: `application/json`
-   - Events: *Just the push event*
+Selesai. Sebelum kedua secret ada, langkahnya otomatis dilewati dan menulis
+pengingat di ringkasan job — CI dan Release tetap hijau.
 
-**Cara C — lewat GitHub Actions.** Sudah tersedia di `release.yml` sebagai cadangan, berguna bila ingin Packagist baru diperbarui setelah test lulus.
-
-1. GitHub repo → **Settings → Secrets and variables → Actions → New repository secret**:
-   - `PACKAGIST_USERNAME` — username packagist.org
-   - `PACKAGIST_TOKEN` — API token dari langkah di atas
-2. Selesai. Langkah **Beri tahu Packagist** otomatis aktif begitu kedua secret ada, dan otomatis dilewati bila tidak ada — jadi memasang Cara A saja juga aman.
-
-Memeriksa hasilnya:
+**Menyinkronkan versi yang sudah terlanjur rilis.** Actions → **Packagist** →
+**Run workflow**. Berguna untuk tag yang dibuat sebelum secret-nya terpasang.
 
 ```bash
 composer show yespos/client --all | head -20   # versi yang sudah terbaca Packagist
 ```
+
+**Alternatif tanpa Actions.** [GitHub App Packagist](https://github.com/apps/packagist)
+memperbarui pada setiap push tanpa token sama sekali, atau webhook manual ke
+`https://packagist.org/api/update-package?username=<USER>&apiToken=<TOKEN>`.
+Keduanya aman dipasang berdampingan dengan workflow ini.
 
 ## Lisensi
 
