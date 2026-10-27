@@ -265,6 +265,8 @@ php -S localhost:8080 examples/storefront/router.php        # toko online
 
 `storefront` memperagakan pola yang dipakai storefront sungguhan: SDK hanya di server, browser memanggil endpoint JSON milik aplikasi sendiri, dan harga selalu dihitung ulang dari API. Rinciannya di [`examples/README.md`](examples/README.md).
 
+Untuk Laravel, ada aplikasi contoh tersendiri di [`example-laravel`](https://github.com/Yes-Pos/example-laravel): service provider, controller, Blade, dan penerima callback.
+
 ## SDK lain
 
 Bentuk API yang sama tersedia untuk bahasa lain:
